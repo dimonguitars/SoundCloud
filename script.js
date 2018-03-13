@@ -1,86 +1,108 @@
-var tracks;
-var currentTrack = 0
-var soundCloud;
+$(document).ready(function() {
+
+var trackUrl;
+var streamUrl;
+var songId;
+var songTitle;
+var songArtist;
+var songArtwork;
+var stream;
+var track =[]
 
 
-$(document).ready(function(){
-  SC.initialize({
-    client_id: 'ebe2d1362a92fc057ac484fcfb265049'
-});
+class scJukebox {
 
-SC.get("/tracks").then(function(response) {
-  tracks = response;
-  }).then(function(){
-  playSong();
-  $("#start").click(startPlay);
-  $("#pause").click(stopPlay);[currentTrack]
-  $("#next").click(playNext)[currentTrack]
-  $("#down").click(volumeDown);
-  $("#up").click(volumeUp);
-  $("#search").click(songSearch);
-  $("#searchbyId").click(playById);
-}).then(function(){
-  songSearch();
-})
-});
 
-function playSong() {
+  constructor(){
+    SC.initialize({client_id: 'ebe2d1362a92fc057ac484fcfb265049'});
+    }
+
+  submit() {
+      var query = $('#search').val();
+    SC.get('/tracks/', {
+      q: query,
+    }).then(function(result) {
+        track.push(result[1])
+        songId = result[1].id;
+        songTitle = result[1].title;
+        songArtist = result[1].user.username;
+        songArtwork = result[1].artwork_url;
+        streamUrl = result[1].stream_url;
+        $('#artist').html("<a href='https://soundcloud.com/ "+ result[1].user.permalink +"'target='_blank'>" +  result[1].user.username + '</a>');
+        $('#song').html(songTitle);
+        $('#artwork').attr("src", songArtwork);
+        $("#url").html("<a href='https://soundcloud.com/ " + result[1].permalink + "'target='_blank'>" +  result[1].title + '</a>');
+      });
+
+    }
+
+    streamById() {
+        var idsearch = $('#searchbyID').val();
+        SC.get('/tracks/' + idsearch).then(function(result) {
+          track.push(result)
+          songId = result.id;
+          songTitle = result.title;
+          songArtist = result.user.username;
+          songArtwork = result.artwork_url;
+          streamUrl = result.stream_url;
+          $('#artist').html("<a href='https://soundcloud.com/ "+ result.user.permalink +"'target='_blank'>" +  songArtist + '</a>');
+          $('#song').html(songTitle);
+          $('#artwork').attr("src", songArtwork);
+          $("#url").html("<a href='https://soundcloud.com/ "+ songTitle.permalink + "'target='_blank'>" +  songTitle + '</a>');
+        });
+      }
+
+
+
+    play(){
+      console.log(track)
+        SC.stream('/tracks/' + songId).then(function(player){
+          stream = player;
+          stream.play();
+      });
+    
   
-  SC.stream( "/tracks/"+ tracks[currentTrack].id ).then(function(player){
-  soundCloud = player;
+  }
 
-	player.play();
-  player.on("finish",function(){
-  currentTrack ++;
-  });
-  });
-}
+  pause(){
+    if(stream){
+      stream.pause();
+    }
+  }
 
+  stop(){
+    if(stream){
+      stream.pause();
+      stream.seek(0);
+    }
+  }
 
-function songSearch() {
-
-  var inputValue = $('#input').val();
-  SC.get('/tracks/',{q:inputValue}
-).then(function(response){
-  SC.stream( "/tracks/"+ response[currentTrack].id ).then(function(player){
-    $("#name").html(response[currentTrack].title);
-    player.play();
-    player.on("finish",function(){
-  })
-  })
-})
-}
-
-function playNext() {
-
-  currentTrack = currentTrack + 1
-  SC.stream( "/tracks/"+ tracks[currentTrack].id).then(function(player){
-  soundCloud = player;
-  $("#name").html(tracks[currentTrack].title);
-  player.play();
-  });
-}
-
-function playById(){
-   var id = $('#byId').val();
-   SC.stream('/tracks/' + id
- ).then(function(player) {
-    player.play()
-  })
-}
+  }//end SCjukebox class
 
 
-function stopPlay() {
-  soundCloud.pause();
-}
+        function init() {
+          var jukebox = new scJukebox();
 
-function startPlay() {
-  soundCloud.play();
-}
-function volumeDown() {
-  soundCloud.setVolume( Math.max(0,soundCloud.getVolume() - 0.1) );
-}
+          document.getElementById('submit').addEventListener('click', function() {
+            jukebox.submit()
 
-function volumeUp() {
-  soundCloud.setVolume( Math.max(0,soundCloud.getVolume() + 0.1) );
-}
+          });
+
+          document.getElementById('searchid').addEventListener('click', function() {
+            jukebox.streamById()
+
+          });
+          document.getElementById('play').addEventListener('click', function() {
+            jukebox.play()
+            console.log(track)
+          });
+          document.getElementById('pause').addEventListener('click', function() {
+            jukebox.pause()
+          });
+          document.getElementById('stop').addEventListener('click', function() {
+            jukebox.stop()
+          });
+        }
+        init();
+
+      });
